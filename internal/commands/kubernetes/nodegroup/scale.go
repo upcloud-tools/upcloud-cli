@@ -2,6 +2,7 @@ package nodegroup
 
 import (
 	"fmt"
+	"math"
 
 	"github.com/UpCloudLtd/upcloud-cli/v3/internal/apierror"
 	"github.com/UpCloudLtd/upcloud-cli/v3/internal/commands"
@@ -60,8 +61,12 @@ func (s *scaleCommand) ExecuteSingleArgument(exec commands.Executor, arg string)
 		return commands.HandleError(exec, msg, fmt.Errorf("invalid kubernetes cluster UUID %q: %w", arg, err))
 	}
 
+	if s.count < 0 || s.count > math.MaxInt32 {
+		return commands.HandleError(exec, msg, fmt.Errorf("--count must be between 0 and %d, got %d", math.MaxInt32, s.count))
+	}
+
 	res, err := client.ModifyKubernetesClusterNodeGroupWithResponse(exec.Context(), id, s.name, upcloudv9.KubernetesNodeGroupPatch{
-		Count: int32(s.count),
+		Count: int32(s.count), //gosec:disable G115 -- guarded by range check above
 	})
 	if err != nil {
 		return commands.HandleError(exec, msg, err)

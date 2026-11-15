@@ -77,6 +77,24 @@ func TestScaleKubernetesNodeGroup(t *testing.T) {
 			},
 			errorMsg: `invalid kubernetes cluster UUID "not-a-uuid": invalid UUID length: 10`,
 		},
+		{
+			name: "negative count",
+			args: []string{
+				clusterUUID,
+				"--name", "my-node-group",
+				"--count", "-1",
+			},
+			errorMsg: "--count must be between 0 and 2147483647, got -1",
+		},
+		{
+			name: "count overflows int32",
+			args: []string{
+				clusterUUID,
+				"--name", "my-node-group",
+				"--count", "2147483648",
+			},
+			errorMsg: "--count must be between 0 and 2147483647, got 2147483648",
+		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			api := newFakeAPI(t, test.responses)
