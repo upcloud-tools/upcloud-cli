@@ -31,7 +31,7 @@ Changes are kept small and self-contained so that upstream can merge them at any
 
 The fork runs the upstream workflows with a release pipeline adapted for the fork:
 
-- `test`, `lint`, `codeql`: run as upstream, no secrets needed.
+- `test`, `lint`, `codeql`: run as upstream, no secrets needed. Superseded runs on the same PR or branch are cancelled automatically.
 - `docs`: manual `workflow_dispatch` only here. Upstream deploys the MkDocs site to `gh-pages` on main pushes and releases; run it manually and enable GitHub Pages if you want the site.
 - `examples`: manual `workflow_dispatch` only here. Run when necessary, as it creates billable resources.
 - `publish`: on tags matching `v*.*.*` (e.g. `v3.37.1-community`), builds binaries, deb/rpm/apk packages, checksums, and SBOMs, creates a **draft** GitHub release on this fork (marked as prerelease for `-community` tags), pushes container images to `ghcr.io/upcloud-tools/upctl`, and attaches build provenance attestations. Publish the draft release manually after review.
