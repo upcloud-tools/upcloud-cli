@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.37.1-community] - 2026-11-15
+
+### Changed
+
+- `kubernetes nodegroup scale` uses the v9 SDK. Its existing JSON and YAML output shape is preserved.
+- Command help no longer shows a default value for required flags, such as `kubernetes nodegroup scale --count`.
+
+### Fixed
+
+- Fix `kubernetes nodegroup scale --count 0` silently doing nothing. The node count is now always sent to the API, so node groups can be scaled down to zero.
+
 ## [3.37.0] - 2026-10-13
 
 ### Added
@@ -754,7 +765,8 @@ Initial public beta release :tada:
 ### Added
 - Current feature set added! First internal release
 
-[Unreleased]: https://github.com/UpCloudLtd/upcloud-cli/compare/v3.37.0...HEAD
+[Unreleased]: https://github.com/upcloud-tools/upcloud-cli/compare/v3.37.1-community...HEAD
+[3.37.1-community]: https://github.com/upcloud-tools/upcloud-cli/compare/v3.37.0...v3.37.1-community
 [3.37.0]: https://github.com/UpCloudLtd/upcloud-cli/compare/v3.36.0...v3.37.0
 [3.36.0]: https://github.com/UpCloudLtd/upcloud-cli/compare/v3.35.0...v3.36.0
 [3.35.0]: https://github.com/UpCloudLtd/upcloud-cli/compare/v3.34.0...v3.35.0
