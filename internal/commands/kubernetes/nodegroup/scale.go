@@ -2,12 +2,15 @@ package nodegroup
 
 import (
 	"fmt"
+	"math"
 
+	"github.com/UpCloudLtd/upcloud-cli/v3/internal/apierror"
 	"github.com/UpCloudLtd/upcloud-cli/v3/internal/commands"
 	"github.com/UpCloudLtd/upcloud-cli/v3/internal/completion"
 	"github.com/UpCloudLtd/upcloud-cli/v3/internal/output"
 	"github.com/UpCloudLtd/upcloud-cli/v3/internal/resolver"
-	"github.com/UpCloudLtd/upcloud-go-api/v8/upcloud/request"
+	upcloudv9 "github.com/UpCloudLtd/upcloud-go-api/v9/pkg/upcloud"
+	"github.com/google/uuid"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
@@ -49,16 +52,35 @@ func (s *scaleCommand) ExecuteSingleArgument(exec commands.Executor, arg string)
 	msg := fmt.Sprintf("Scaling node group %s of cluster %v", s.name, arg)
 	exec.PushProgressStarted(msg)
 
-	res, err := exec.All().ModifyKubernetesNodeGroup(exec.Context(), &request.ModifyKubernetesNodeGroupRequest{
-		ClusterUUID: arg,
-		Name:        s.name,
-		NodeGroup:   request.ModifyKubernetesNodeGroup{Count: s.count},
+	client, err := v9Client(exec)
+	if err != nil {
+		return commands.HandleError(exec, msg, err)
+	}
+	id, err := uuid.Parse(arg)
+	if err != nil {
+		return commands.HandleError(exec, msg, fmt.Errorf("invalid kubernetes cluster UUID %q: %w", arg, err))
+	}
+
+	if s.count < 0 || s.count > math.MaxInt32 {
+		return commands.HandleError(exec, msg, fmt.Errorf("--count must be between 0 and %d, got %d", math.MaxInt32, s.count))
+	}
+
+	res, err := client.ModifyKubernetesClusterNodeGroupWithResponse(exec.Context(), id, s.name, upcloudv9.KubernetesNodeGroupPatch{
+		Count: int32(s.count), //gosec:disable G115 -- guarded by range check above
 	})
+	if err != nil {
+		return commands.HandleError(exec, msg, err)
+	}
+	if res.JSON200 == nil {
+		return commands.HandleError(exec, msg, apierror.FromResponse(res.StatusCode(), res.Body))
+	}
+
+	legacy, err := legacyNodeGroupOutput(res.JSON200)
 	if err != nil {
 		return commands.HandleError(exec, msg, err)
 	}
 
 	exec.PushProgressSuccess(msg)
 
-	return output.OnlyMarshaled{Value: res}, nil
+	return output.OnlyMarshaled{Value: legacy}, nil
 }
