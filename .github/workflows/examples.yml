@@ -1,13 +1,7 @@
 name: Examples
 
+# Community fork: the examples run is slow and creates billable resources; run manually only.
 on:
-  pull_request:
-    paths:
-      - ".github/workflows/examples.yml"
-      - "**.go"
-      - "go.mod"
-      - "go.sum"
-      - "examples/**.md"
   workflow_dispatch:
 
 concurrency:
