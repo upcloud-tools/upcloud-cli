@@ -39,7 +39,8 @@ func formatFlags(fs *pflag.FlagSet) string {
 			def = strings.TrimPrefix(def, "[")
 			def = strings.TrimSuffix(def, "]")
 		}
-		if def != "" {
+		_, required := flag.Annotations[cobra.BashCompOneRequiredFlag]
+		if def != "" && !required {
 			fmt.Fprintf(&flagUsage, "\nDefault: %s", def)
 		}
 		t.Append(table.Row{flagText.String(), flagUsage.String()})
