@@ -1,13 +1,7 @@
 name: Docs
+# Community fork: automatic docs deployment is disabled; run manually if needed.
 on:
-  push:
-    branches:
-      - main
-      - test-docs-generator # for testing
-  # Update version in installation instructions when new version is released
-  release:
-    types:
-    - released
+  workflow_dispatch:
 
 permissions:
   contents: read

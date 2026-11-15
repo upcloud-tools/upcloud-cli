@@ -103,9 +103,6 @@ brews:
     repository:
       owner: UpCloudLtd
       name: homebrew-tap
-
-      # Optionally a token can be provided, if it differs from the token provided to GoReleaser
-      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
     commit_author:
       name: goreleaserbot
       email: goreleaser@carlosbecker.com
@@ -124,7 +121,8 @@ brews:
     # If set to auto, the release will not be uploaded to the homebrew tap
     # in case there is an indicator for prerelease in the tag e.g. v1.0.0-rc1
     # Default is false.
-    skip_upload: false
+    # Community fork: never publish to the upstream tap.
+    skip_upload: true
 
     # Custom block for brew.
     # Can be used to specify alternate downloads for devel or head releases.
@@ -156,21 +154,17 @@ dockers:
     use: buildx
     dockerfile: Dockerfile.goreleaser
     image_templates:
-      - "upcloud/upctl:latest"
-      - "upcloud/upctl:{{ .Tag }}"
-      - "upcloud/upctl:{{ .Major }}"
-      - "upcloud/upctl:{{ .Major }}.{{ .Minor }}"
-      - "ghcr.io/upcloudltd/upctl:latest"
-      - "ghcr.io/upcloudltd/upctl:{{ .Tag }}"
-      - "ghcr.io/upcloudltd/upctl:{{ .Major }}"
-      - "ghcr.io/upcloudltd/upctl:{{ .Major }}.{{ .Minor }}"
+      - "ghcr.io/upcloud-tools/upctl:latest"
+      - "ghcr.io/upcloud-tools/upctl:{{ .Tag }}"
+      - "ghcr.io/upcloud-tools/upctl:{{ .Major }}"
+      - "ghcr.io/upcloud-tools/upctl:{{ .Major }}.{{ .Minor }}"
     build_flag_templates:
       - "--platform=linux/amd64"
       - "--label=org.opencontainers.image.created={{.Date}}"
       - "--label=org.opencontainers.image.title=upctl"
       - "--label=org.opencontainers.image.revision={{.FullCommit}}"
       - "--label=org.opencontainers.image.version={{.Version}}"
-      - "--label=org.opencontainers.image.source=https://github.com/UpCloudLtd/upcloud-cli.git"
+      - "--label=org.opencontainers.image.source=https://github.com/upcloud-tools/upcloud-cli.git"
 
 sboms:
   - documents:
@@ -180,7 +174,7 @@ release:
   # Repo in which the release will be created.
   # Default is extracted from the origin remote URL or empty if its private hosted.
   github:
-    owner: UpCloudLtd
+    owner: upcloud-tools
     name: upcloud-cli
 
   # If set to true, will not auto-publish the release.
@@ -202,7 +196,8 @@ release:
   # in case there is an indicator for this in the tag e.g. v1.0.0-rc1
   # If set to true, will mark the release as not ready for production.
   # Default is false.
-  prerelease: false
+  # Community fork: -community tags are semver prereleases.
+  prerelease: auto
 
   # What to do with the release notes in case there the release already exists.
   #

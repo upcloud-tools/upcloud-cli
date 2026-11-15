@@ -27,6 +27,17 @@ Changes are kept small and self-contained so that upstream can merge them at any
 - The scale fix works around a bug in the `upcloud-go-api` v8 SDK: `request.ModifyKubernetesNodeGroup.Count` is tagged `json:"count,omitempty"`, so a zero count is dropped from the PATCH body and the API no-ops while the CLI reports success. The v9 SDK (`KubernetesNodeGroupPatch`) models `count` without `omitempty` and is not affected. Fixing the v8 SDK would additionally benefit all other v8 consumers.
 - The help renderer change is in `internal/ui/usage.go` (`formatFlags`) and applies to every command with required flags.
 
+## CI and releases
+
+The fork runs the upstream workflows with a release pipeline adapted for the fork:
+
+- `test`, `lint`, `codeql`: run as upstream, no secrets needed.
+- `docs`: automatic deployment is disabled in the fork (manual `workflow_dispatch` only). Upstream deploys the MkDocs site to `gh-pages` on main pushes and releases; run it manually and enable GitHub Pages if you want the site.
+- `examples`: runs the examples against the real API on PRs and manual dispatch. Requires the repository secrets `UPCLOUD_USERNAME` and `UPCLOUD_PASSWORD`; use a dedicated (sub-)account, as the examples create billable resources and the cleanup job purges resources matching `example-upctl-*`.
+- `publish`: on tags matching `v*.*.*` (e.g. `v3.37.1-community`), builds binaries, deb/rpm/apk packages, checksums, and SBOMs, creates a **draft** GitHub release on this fork (marked as prerelease for `-community` tags), pushes container images to `ghcr.io/upcloud-tools/upctl`, and attaches build provenance attestations. Publish the draft release manually after review.
+
+Differences from upstream: no Docker Hub (`upcloud/upctl`), or Homebrew tap publishing. Everything else uses the automatic `GITHUB_TOKEN`; no additional secrets are needed for releases.
+
 ## Syncing with upstream
 
 ```sh
