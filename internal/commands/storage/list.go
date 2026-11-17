@@ -1,6 +1,8 @@
 package storage
 
 import (
+	"sync"
+
 	"github.com/UpCloudLtd/upcloud-cli/v3/internal/commands"
 	"github.com/UpCloudLtd/upcloud-cli/v3/internal/config"
 	"github.com/UpCloudLtd/upcloud-cli/v3/internal/format"
@@ -26,13 +28,14 @@ func ListCommand() commands.Command {
 
 type listCommand struct {
 	*commands.BaseCommand
-	all      config.OptionalBoolean
-	private  config.OptionalBoolean
-	public   config.OptionalBoolean
-	normal   config.OptionalBoolean
-	backup   config.OptionalBoolean
-	cdrom    config.OptionalBoolean
-	template config.OptionalBoolean
+	all             config.OptionalBoolean
+	private         config.OptionalBoolean
+	public          config.OptionalBoolean
+	normal          config.OptionalBoolean
+	backup          config.OptionalBoolean
+	cdrom           config.OptionalBoolean
+	template        config.OptionalBoolean
+	attachedServers config.OptionalBoolean
 }
 
 // InitCommand implements Command.InitCommand
@@ -45,6 +48,7 @@ func (s *listCommand) InitCommand() {
 	config.AddToggleFlag(flags, &s.backup, "backup", false, "Show only backup storages.")
 	config.AddToggleFlag(flags, &s.cdrom, "cdrom", false, "Show only cdrom storages.")
 	config.AddToggleFlag(flags, &s.template, "template", false, "Show only template storages.")
+	config.AddToggleFlag(flags, &s.attachedServers, "show-attached-servers", false, "Show the servers each storage is attached to.")
 
 	s.AddFlags(flags)
 }
@@ -94,9 +98,17 @@ func (s *listCommand) ExecuteWithoutArguments(exec commands.Executor) (output.Ou
 		}
 	}
 
+	var attachedServers map[string]upcloud.ServerUUIDSlice
+	if s.attachedServers.Value() {
+		attachedServers, err = getAttachedServersByStorageUUID(filtered, exec)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	rows := []output.TableRow{}
 	for _, storage := range filtered {
-		rows = append(rows, output.TableRow{
+		row := output.TableRow{
 			storage.UUID,
 			storage.Title,
 			storage.Encrypted,
@@ -106,25 +118,102 @@ func (s *listCommand) ExecuteWithoutArguments(exec commands.Executor) (output.Ou
 			storage.Tier,
 			storage.Zone,
 			storage.Access,
-			storage.Created,
-		})
+		}
+		if s.attachedServers.Value() {
+			row = append(row, attachedServers[storage.UUID])
+		}
+		row = append(row, storage.Created)
+		rows = append(rows, row)
+	}
+
+	columns := []output.TableColumn{
+		{Key: "uuid", Header: "UUID", Colour: ui.DefaultUUUIDColours},
+		{Key: "title", Header: "Title"},
+		{Key: "encrypted", Header: "Encrypted", Format: format.Boolean},
+		{Key: "type", Header: "Type"},
+		{Key: "size", Header: "Size"},
+		{Key: "state", Header: "State", Format: format.StorageState},
+		{Key: "tier", Header: "Tier"},
+		{Key: "zone", Header: "Zone"},
+		{Key: "access", Header: "Access"},
+	}
+	if s.attachedServers.Value() {
+		columns = append(columns, output.TableColumn{Key: "servers", Header: "Attached to", Format: formatShowServers})
+	}
+
+	var value any = upcloud.Storages{Storages: filtered}
+	if s.attachedServers.Value() {
+		enriched := storagesWithAttachedServers{Storages: make([]storageWithAttachedServers, 0, len(filtered))}
+		for _, storage := range filtered {
+			servers := attachedServers[storage.UUID]
+			if servers == nil {
+				servers = upcloud.ServerUUIDSlice{}
+			}
+			enriched.Storages = append(enriched.Storages, storageWithAttachedServers{
+				Storage:     storage,
+				ServerUUIDs: servers,
+			})
+		}
+		value = enriched
 	}
 
 	return output.MarshaledWithHumanOutput{
-		Value: upcloud.Storages{Storages: filtered},
+		Value: value,
 		Output: output.Table{
-			Columns: []output.TableColumn{
-				{Key: "uuid", Header: "UUID", Colour: ui.DefaultUUUIDColours},
-				{Key: "title", Header: "Title"},
-				{Key: "encrypted", Header: "Encrypted", Format: format.Boolean},
-				{Key: "type", Header: "Type"},
-				{Key: "size", Header: "Size"},
-				{Key: "state", Header: "State", Format: format.StorageState},
-				{Key: "tier", Header: "Tier"},
-				{Key: "zone", Header: "Zone"},
-				{Key: "access", Header: "Access"},
-			},
-			Rows: rows,
+			Columns: columns,
+			Rows:    rows,
 		},
 	}, nil
+}
+
+// storageWithAttachedServers embeds a storage with the UUIDs of the servers it is
+// attached to, so machine-readable output includes the same data as the human output.
+type storageWithAttachedServers struct {
+	upcloud.Storage
+
+	ServerUUIDs upcloud.ServerUUIDSlice `json:"servers"`
+}
+
+type storagesWithAttachedServers struct {
+	Storages []storageWithAttachedServers `json:"storages"`
+}
+
+// getAttachedServersByStorageUUID fetches the attached servers for each storage.
+// The storage list endpoint does not include attachment information, so this
+// requires a details request per storage.
+func getAttachedServersByStorageUUID(storages []upcloud.Storage, exec commands.Executor) (map[string]upcloud.ServerUUIDSlice, error) {
+	type result struct {
+		storageUUID string
+		serverUUIDs upcloud.ServerUUIDSlice
+		err         error
+	}
+	returnChan := make(chan result)
+	var wg sync.WaitGroup
+
+	for _, storage := range storages {
+		wg.Add(1)
+		go func(storage upcloud.Storage) {
+			defer wg.Done()
+			details, err := exec.Storage().GetStorageDetails(exec.Context(), &request.GetStorageDetailsRequest{UUID: storage.UUID})
+			var servers upcloud.ServerUUIDSlice
+			if details != nil {
+				servers = details.ServerUUIDs
+			}
+			returnChan <- result{storageUUID: storage.UUID, serverUUIDs: servers, err: err}
+		}(storage)
+	}
+
+	go func() {
+		wg.Wait()
+		close(returnChan)
+	}()
+
+	attached := make(map[string]upcloud.ServerUUIDSlice)
+	for res := range returnChan {
+		if res.err != nil {
+			return nil, res.err
+		}
+		attached[res.storageUUID] = res.serverUUIDs
+	}
+	return attached, nil
 }
