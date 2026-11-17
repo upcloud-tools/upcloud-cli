@@ -33,6 +33,14 @@ type planListCommand struct {
 	pricesDuration string
 }
 
+// planWithPrice embeds a plan with its price for the requested zone and duration,
+// so machine-readable output includes the same pricing as the human output.
+type planWithPrice struct {
+	upcloud.Plan
+
+	Price *float64 `json:"price,omitempty"`
+}
+
 // InitCommand initializes the command flags
 func (s *planListCommand) InitCommand() {
 	flagSet := &pflag.FlagSet{}
@@ -104,6 +112,7 @@ func (s *planListCommand) ExecuteWithoutArguments(exec commands.Executor) (outpu
 	}
 
 	rows := make(map[string][]output.TableRow)
+	plansWithPrices := make([]planWithPrice, 0, len(plans))
 	for _, p := range plans {
 		key := planType(p)
 		row := output.TableRow{
@@ -124,13 +133,25 @@ func (s *planListCommand) ExecuteWithoutArguments(exec commands.Executor) (outpu
 		if showPrices && prices != nil {
 			cost := getPlanCost(p, prices, duration)
 			row = append(row, cost)
+
+			plan := planWithPrice{Plan: p}
+			if !math.IsNaN(cost) {
+				plan.Price = &cost
+			}
+			plansWithPrices = append(plansWithPrices, plan)
 		}
 
 		rows[key] = append(rows[key], row)
 	}
 
+	// Embed prices in the machine-readable output, not just the human output
+	var value any = plans
+	if showPrices && prices != nil {
+		value = plansWithPrices
+	}
+
 	return output.MarshaledWithHumanOutput{
-		Value: plans,
+		Value: value,
 		Output: output.Combined{
 			planSection("premium", "Premium", rows["premium"], showPrices, s.pricesDuration),
 			planSection("starter", "Starter", rows["starter"], showPrices, s.pricesDuration),
