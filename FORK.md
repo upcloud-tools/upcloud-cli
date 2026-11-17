@@ -21,11 +21,14 @@ Changes are kept small and self-contained so that upstream can merge them at any
 | ------ | ------------- | ------------- | --------------- |
 | `kubernetes node-group scale --count 0` sends `{"count": 0}` instead of silently doing nothing. The command now uses the v9 SDK; JSON/YAML output shape is preserved. | 3.37.1-community | [#1](https://github.com/upcloud-tools/upcloud-cli/issues/1) | Not fixed as of upstream v3.37.0 |
 | Command help no longer shows `Default:` for required flags (e.g. `scale --count` showed a misleading `Default: 0`). | 3.37.1-community | [#1](https://github.com/upcloud-tools/upcloud-cli/issues/1) | Not fixed as of upstream v3.37.0 |
+| `server plans --prices`: `-o json`/`-o yaml` now include the computed price (`price` field per plan, omitted when unknown). | 3.37.2-community | [#805](https://github.com/UpCloudLtd/upcloud-cli/issues/805) | Open upstream |
+| `server show`: `-o json`/`-o yaml` now include firewall rules (`firewall_rules` field); previously only the default human view showed them. | 3.37.2-community | [#805](https://github.com/UpCloudLtd/upcloud-cli/issues/805) | No upstream issue |
 
 ### Notes for upstream merging
 
 - The scale fix works around a bug in the `upcloud-go-api` v8 SDK: `request.ModifyKubernetesNodeGroup.Count` is tagged `json:"count,omitempty"`, so a zero count is dropped from the PATCH body and the API no-ops while the CLI reports success. The v9 SDK (`KubernetesNodeGroupPatch`) models `count` without `omitempty` and is not affected. Fixing the v8 SDK would additionally benefit all other v8 consumers.
 - The help renderer change is in `internal/ui/usage.go` (`formatFlags`) and applies to every command with required flags.
+- The JSON output fixes follow the existing `server list --show-ip-addresses` pattern (`serverWithIPAddress`): wrapper structs embed the SDK response, so existing JSON/YAML fields are preserved and the enriched fields are additive. An audit of all commands found these two were the only ones rendering data in human output that was missing from machine output.
 
 ## CI and releases
 

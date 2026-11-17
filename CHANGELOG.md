@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.37.2-community]
+
+### Fixed
+- `server plans --prices`: the `-o json` and `-o yaml` output formats now include the computed price per plan, which previously appeared only in the default human-readable table ([upstream #805](https://github.com/UpCloudLtd/upcloud-cli/issues/805)).
+- `server show`: the `-o json` and `-o yaml` output formats now include firewall rules, which previously appeared only in the default human-readable view.
+
 ## [3.37.1-community] - 2026-11-15
 
 ### Changed
@@ -765,7 +771,8 @@ Initial public beta release :tada:
 ### Added
 - Current feature set added! First internal release
 
-[Unreleased]: https://github.com/upcloud-tools/upcloud-cli/compare/v3.37.1-community...HEAD
+[Unreleased]: https://github.com/upcloud-tools/upcloud-cli/compare/v3.37.2-community...HEAD
+[3.37.2-community]: https://github.com/upcloud-tools/upcloud-cli/compare/v3.37.1-community...v3.37.2-community
 [3.37.1-community]: https://github.com/upcloud-tools/upcloud-cli/compare/v3.37.0...v3.37.1-community
 [3.37.0]: https://github.com/UpCloudLtd/upcloud-cli/compare/v3.36.0...v3.37.0
 [3.36.0]: https://github.com/UpCloudLtd/upcloud-cli/compare/v3.35.0...v3.36.0
