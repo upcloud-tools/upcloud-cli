@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 
 	"github.com/UpCloudLtd/upcloud-cli/v3/internal/commands"
@@ -13,6 +14,7 @@ import (
 	"github.com/UpCloudLtd/upcloud-go-api/v8/upcloud/request"
 	"github.com/jedib0t/go-pretty/v6/text"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestServerHumanOutput(t *testing.T) {
@@ -221,4 +223,57 @@ func TestServerHumanOutput(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Equal(t, expected, output)
+}
+
+func TestServerJSONOutput(t *testing.T) {
+	uuid := "0077fa3d-32db-4b09-9f5f-30d9e9afb565"
+	srv := &upcloud.ServerDetails{
+		Server: upcloud.Server{
+			Hostname: "server1.example.com",
+			Plan:     "1xCPU-2GB",
+			State:    "started",
+			UUID:     uuid,
+			Zone:     "fi-hel1",
+		},
+	}
+	firewallRules := &upcloud.FirewallRules{
+		FirewallRules: []upcloud.FirewallRule{
+			{
+				Direction: upcloud.FirewallRuleDirectionIn,
+				Action:    upcloud.FirewallRuleActionAccept,
+				Family:    upcloud.IPAddressFamilyIPv4,
+				Protocol:  upcloud.FirewallRuleProtocolTCP,
+				Position:  1,
+			},
+		},
+	}
+
+	mService := new(smock.Service)
+	mService.On("GetServers").Return(&upcloud.Servers{Servers: []upcloud.Server{srv.Server}}, nil)
+	mService.On("GetServerDetails", &request.GetServerDetailsRequest{UUID: uuid}).Return(srv, nil)
+	mService.On("GetFirewallRules", &request.GetFirewallRulesRequest{ServerUUID: uuid}).Return(firewallRules, nil)
+
+	conf := config.New()
+	conf.Viper().Set(config.KeyOutput, config.ValueOutputJSON)
+
+	command := commands.BuildCommand(ShowCommand(), nil, conf)
+
+	// get resolver to initialize command cache
+	_, err := command.(*showCommand).Get(context.TODO(), mService)
+	require.NoError(t, err)
+
+	command.Cobra().SetArgs([]string{uuid})
+	out, err := mockexecute.MockExecute(command, mService, conf)
+	assert.NoError(t, err)
+
+	var parsed map[string]any
+	require.NoError(t, json.Unmarshal([]byte(out), &parsed))
+	assert.Equal(t, uuid, parsed["uuid"])
+	rules, ok := parsed["firewall_rules"].([]any)
+	require.True(t, ok, "JSON output should include firewall_rules")
+	require.Len(t, rules, 1)
+	rule, ok := rules[0].(map[string]any)
+	require.True(t, ok)
+	assert.Equal(t, "accept", rule["action"])
+	assert.Equal(t, "in", rule["direction"])
 }
