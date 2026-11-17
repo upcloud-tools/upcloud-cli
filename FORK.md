@@ -23,6 +23,7 @@ Changes are kept small and self-contained so that upstream can merge them at any
 | Command help no longer shows `Default:` for required flags (e.g. `scale --count` showed a misleading `Default: 0`). | 3.37.1-community | [#1](https://github.com/upcloud-tools/upcloud-cli/issues/1) | Not fixed as of upstream v3.37.0 |
 | `server plans --prices`: `-o json`/`-o yaml` now include the computed price (`price` field per plan, omitted when unknown). | 3.37.2-community | [#805](https://github.com/UpCloudLtd/upcloud-cli/issues/805) | Open upstream |
 | `server show`: `-o json`/`-o yaml` now include firewall rules (`firewall_rules` field); previously only the default human view showed them. | 3.37.2-community | [#805](https://github.com/UpCloudLtd/upcloud-cli/issues/805) | No upstream issue |
+| `storage list --show-attached-servers` shows attached server UUIDs in the table and in `-o json`/`-o yaml` (`servers` field); opt-in, fetches storage details per disk. Implemented temporarily in the CLI due to missing in the SDK. | 3.37.2-community | [#803](https://github.com/UpCloudLtd/upcloud-cli/issues/803) | Open upstream |
 
 ### Notes for upstream merging
 

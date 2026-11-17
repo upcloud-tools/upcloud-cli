@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [3.37.2-community]
 
+### Added
+- `storage list --show-attached-servers` shows the servers each storage is attached to, in the human-readable table and in `-o json`/`-o yaml` output (`servers` field, same shape as the storage details API response). Opt-in, as it requires a details request per storage ([upstream #803](https://github.com/UpCloudLtd/upcloud-cli/issues/803)). The SDK doesn't provide such functionality, so this has been implemented as a temporary workaround in the CLI.
+
 ### Fixed
 - `server plans --prices`: the `-o json` and `-o yaml` output formats now include the computed price per plan, which previously appeared only in the default human-readable table ([upstream #805](https://github.com/UpCloudLtd/upcloud-cli/issues/805)).
 - `server show`: the `-o json` and `-o yaml` output formats now include firewall rules, which previously appeared only in the default human-readable view.
