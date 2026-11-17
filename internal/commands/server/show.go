@@ -38,6 +38,14 @@ type showCommand struct {
 	completion.Server
 }
 
+// serverWithFirewallRules embeds server details with the separately fetched firewall
+// rules, so machine-readable output includes the same data as the human output.
+type serverWithFirewallRules struct {
+	*upcloud.ServerDetails
+
+	FirewallRules []upcloud.FirewallRule `json:"firewall_rules"`
+}
+
 func (s *showCommand) InitCommand() {
 }
 
@@ -269,7 +277,10 @@ func (s *showCommand) Execute(exec commands.Executor, uuid string) (output.Outpu
 	}
 
 	return output.MarshaledWithHumanOutput{
-		Value:  server,
+		Value: serverWithFirewallRules{
+			ServerDetails: server,
+			FirewallRules: firewallRules.FirewallRules,
+		},
 		Output: combined,
 	}, nil
 }
